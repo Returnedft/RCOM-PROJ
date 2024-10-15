@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "link_layer.h": "c",
+        "serial_port.h": "c",
+        "unistd.h": "c",
+        "application_layer.h": "c",
+        "alarm.h": "c"
+    }
+}
