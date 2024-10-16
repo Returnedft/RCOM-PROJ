@@ -31,6 +31,11 @@ typedef struct
 #define A1 0x03
 #define A2 0x01
 #define FLAG 0X7E
+#define RR0 0xAA
+#define RR1 0xAB
+#define REJ0 0x54
+#define REJ1 0X55
+#define DISC 0x0B
 
 // Open a connection using the "port" parameters defined in struct linkLayer.
 // Return "1" on success or "-1" on error.
@@ -64,5 +69,13 @@ int llread(unsigned char *packet);
 // if showStatistics == TRUE, link layer should print statistics in the console on close.
 // Return "1" on success or "-1" on error.
 int llclose(int showStatistics);
+
+int receiveData(unsigned char byte, int check, int n, unsigned char *BCC, unsigned char *last);
+
+int responseState(int byte, int check, int n, int *error);
+
+int transmiterDiscState(int byte, int check);
+
+int receiverDiscState(int byte, int check);
 
 #endif // _LINK_LAYER_H_
