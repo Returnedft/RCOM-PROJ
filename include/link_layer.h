@@ -19,6 +19,8 @@ typedef struct
     int timeout;
 } LinkLayer;
 
+extern int ns;
+
 // SIZE of maximum acceptable payload.
 // Maximum number of bytes that application layer should send to link layer
 #define MAX_PAYLOAD_SIZE 1000
@@ -70,9 +72,9 @@ int llread(unsigned char *packet);
 // Return "1" on success or "-1" on error.
 int llclose(int showStatistics);
 
-int receiveData(unsigned char byte, int *check, int n, unsigned char *BCC, unsigned char *last);
+int receiveData(unsigned char byte, int *check, unsigned char *BCC, unsigned char *last);
 
-int responseState(int byte, int *check, int *n);
+int responseState(int byte, int *check);
 
 int transmiterDiscState(int byte, int *check);
 

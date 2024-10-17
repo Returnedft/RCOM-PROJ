@@ -12,6 +12,8 @@
 // MISC
 #define _POSIX_SOURCE 1 // POSIX compliant source
 
+int ns = 0;
+
 ////////////////////////////////////////////////
 // LLSENDSET 
 ////////////////////////////////////////////////
@@ -206,10 +208,20 @@ int llopen(LinkLayer connectionParameters)
     if (connectionParameters.role == LlTx) {
         llsendSet(buf,sizeof(buf));
     }
-    else if (llsendUA()) {
-        llwrite(connectionParameters.serialPort,sizeof(connectionParameters.serialPort));
+    else {
+        if (llsendUA() == -1){
+            return -1;
+        }
     }
-
+    if (connectionParameters.role == LlTx){
+        const unsigned char buff [10] = {FLAG,A1,0x00, A1 ^ 0x00, 0x34, 0x32, 0x37, 0x34 ^ 0x32 ^ 0x37, FLAG};
+        llwrite(buff,sizeof(buff));
+    }
+    else llread(connectionParameters.serialPort);
+    if (connectionParameters.role == LlTx){
+        //Disc
+    }
+    sleep(1);
     return 1;
 }
 
@@ -219,8 +231,7 @@ int llopen(LinkLayer connectionParameters)
 int llwrite(const unsigned char *buf, int bufSize)
 {
     alarmEnabled = 0;
-    int ns = 0;
-
+    alarmCount = 0;
     unsigned char byte = 0;
     int check = 0;
 
@@ -238,14 +249,11 @@ int llwrite(const unsigned char *buf, int bufSize)
 
         if ( read == -1 ) return 1;
         else if (read == 0) continue;
-        if (responseState(byte, &check, &ns)) break;
+        printf("Response = 0x%02X\n", byte);
+        if (responseState(byte, &check)) break;
     }
 
-    if (check == 5 ) printf("Ua received \n");
     sleep(1);
-
-    return 0;
-
 
     return bufSize;
 }
@@ -255,7 +263,33 @@ int llwrite(const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 int llread(unsigned char *packet)
 {
-    // TODO
+    int STOP = FALSE;
+    unsigned char byte = 0;
+    int check = 0;
+    unsigned char BCC = 0;
+    unsigned char last = 0;
+    int dataCheck;
+    while (STOP == FALSE){
+        int read = readByteSerialPort(&byte);
+        if ( read == -1 ) return 1;
+        else if (read == 0) continue;
+        else printf("Data = 0x%02X\n", byte);
+        dataCheck = receiveData(byte, &check, &BCC, &last);
+        if (dataCheck != 0) STOP = TRUE;
+    }
+    unsigned char C;
+    if (dataCheck == -1){
+        if (ns == 1) C = REJ1;
+        else C = REJ0;
+    }else{
+        printf("Received data \n");
+        if (ns == 1) C = RR1;
+        else C = RR0;
+    }
+    const unsigned char buf[5] = {FLAG,A2,C,A2^C,FLAG};
+
+    writeBytesSerialPort(buf,sizeof(buf));
+    sleep(1);
 
     return 0;
 }
@@ -274,9 +308,9 @@ int llclose(int showStatistics)
 ////////////////////////////////////////////////
 // RECEIVEDATA
 ////////////////////////////////////////////////
-int receiveData(unsigned char byte, int*check, int n, unsigned char *BCC, unsigned char *last){
+int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char *last){
     unsigned char infoFrame;
-    if (n==0){
+    if (ns==0){
         infoFrame = 0x00;
     }
     else{
@@ -305,9 +339,9 @@ int receiveData(unsigned char byte, int*check, int n, unsigned char *BCC, unsign
             }
             break;
         case 2:
+            printf("ns = %d", ns);
             if (byte==infoFrame){
             *check=3;
-                printf("3");
             }
             else if(byte==FLAG){
             *check=1;
@@ -343,14 +377,19 @@ int receiveData(unsigned char byte, int*check, int n, unsigned char *BCC, unsign
             }
             break;
     }
-    return (*check == 5) ? 1 : 0;
+    if (*check == 5){ 
+        ns = ns ^ 1;
+        return 1;
+    }
+    return 0;
 }
 
 ////////////////////////////////////////////////
 // RESPONSESTATE
 ////////////////////////////////////////////////
-int responseState(int byte, int*check, int  *ns){
+int responseState(int byte, int*check){
     unsigned char RR, REJ;
+    printf("ns = %d\n", ns);
     if (ns==0){
         RR = RR0;
         REJ = REJ0;
@@ -361,6 +400,7 @@ int responseState(int byte, int*check, int  *ns){
     switch(*check){
             case 0:
                 if (byte==FLAG){
+                printf("0");
                 *check=1;
                 }
                 else{
@@ -369,6 +409,7 @@ int responseState(int byte, int*check, int  *ns){
                 break;
             case 1:
                 if (byte==A2){
+                    printf("1");
                 *check=2;
                 }
                 else if(byte==FLAG){
@@ -380,10 +421,11 @@ int responseState(int byte, int*check, int  *ns){
                 break;
             case 2:
                 if (byte==RR){
+                    printf("2");
                 *check=3;
                 }
                 else if (byte==REJ){
-                *check=3;
+                *check=0;
                 }
                 else if(byte==FLAG){
                 *check=1;
@@ -394,10 +436,11 @@ int responseState(int byte, int*check, int  *ns){
                 break;
             case 3:
                 if (byte == (A2^RR)){
+                    printf("3");
                 *check=4;
                 }
                 else if (byte == (A2^REJ)){
-                *check=4;
+                *check=0;
                 }
                 else if(byte==FLAG){
                 *check=1;
@@ -408,6 +451,7 @@ int responseState(int byte, int*check, int  *ns){
                 break;
             case 4:
                 if (byte==FLAG){
+                    printf("4");
                 *check=5;
                 }
                 else{
@@ -415,7 +459,6 @@ int responseState(int byte, int*check, int  *ns){
                 }
                 break;
         }
-    if (*check == 5) *ns = *ns^1;
     return (*check == 5) ? 1 : 0;
 }
 
