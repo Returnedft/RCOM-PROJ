@@ -218,6 +218,33 @@ int llopen(LinkLayer connectionParameters)
 ////////////////////////////////////////////////
 int llwrite(const unsigned char *buf, int bufSize)
 {
+    alarmEnabled = 0;
+    int ns = 0;
+
+    unsigned char byte = 0;
+    int check = 0;
+
+    while (alarmCount < 3){
+
+        if (alarmEnabled == FALSE){
+        
+          alarm(4);
+          if (writeBytesSerialPort(buf, bufSize) == -1) return 1;
+          sleep(1);
+          alarmEnabled = TRUE;
+        }
+
+        int read = readByteSerialPort(&byte);
+
+        if ( read == -1 ) return 1;
+        else if (read == 0) continue;
+        if (responseState(byte, &check, &ns)) break;
+    }
+
+    if (check == 5 ) printf("Ua received \n");
+    sleep(1);
+
+    return 0;
 
 
     return bufSize;
@@ -322,9 +349,9 @@ int receiveData(unsigned char byte, int*check, int n, unsigned char *BCC, unsign
 ////////////////////////////////////////////////
 // RESPONSESTATE
 ////////////////////////////////////////////////
-int responseState(int byte, int*check, int n, int *error){
+int responseState(int byte, int*check, int  *ns){
     unsigned char RR, REJ;
-    if (n==0){
+    if (ns==0){
         RR = RR0;
         REJ = REJ0;
     }else{
@@ -354,11 +381,9 @@ int responseState(int byte, int*check, int n, int *error){
             case 2:
                 if (byte==RR){
                 *check=3;
-                    *error=0;
                 }
                 else if (byte==REJ){
                 *check=3;
-                    *error=1;
                 }
                 else if(byte==FLAG){
                 *check=1;
@@ -368,10 +393,10 @@ int responseState(int byte, int*check, int n, int *error){
                 }
                 break;
             case 3:
-                if (*error == 0 || byte == (A2^RR)){
+                if (byte == (A2^RR)){
                 *check=4;
                 }
-                else if (*error == 1 || byte == (A2^REJ)){
+                else if (byte == (A2^REJ)){
                 *check=4;
                 }
                 else if(byte==FLAG){
@@ -390,6 +415,7 @@ int responseState(int byte, int*check, int n, int *error){
                 }
                 break;
         }
+    if (*check == 5) *ns = *ns^1;
     return (*check == 5) ? 1 : 0;
 }
 

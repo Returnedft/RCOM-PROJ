@@ -72,7 +72,7 @@ int llclose(int showStatistics);
 
 int receiveData(unsigned char byte, int *check, int n, unsigned char *BCC, unsigned char *last);
 
-int responseState(int byte, int *check, int n, int *error);
+int responseState(int byte, int *check, int *n);
 
 int transmiterDiscState(int byte, int *check);
 
