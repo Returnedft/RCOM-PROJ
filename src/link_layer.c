@@ -234,6 +234,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     alarmCount = 0;
     unsigned char byte = 0;
     int check = 0;
+    int responseCheck;
 
     while (alarmCount < 3){
 
@@ -250,8 +251,12 @@ int llwrite(const unsigned char *buf, int bufSize)
         if ( read == -1 ) return 1;
         else if (read == 0) continue;
         printf("Response = 0x%02X\n", byte);
-        if (responseState(byte, &check)) break;
+        responseCheck = responseState(byte, &check);
+        if (responseCheck == 1) break;
+        else if (responseCheck == -1) alarmEnabled = FALSE;
     }
+
+    printf("ns = %d\n", ns);
 
     sleep(1);
 
@@ -388,74 +393,77 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
 // RESPONSESTATE
 ////////////////////////////////////////////////
 int responseState(int byte, int*check){
-    unsigned char RR, REJ;
-    printf("ns = %d\n", ns);
-    if (ns==0){
-        RR = RR0;
-        REJ = REJ0;
-    }else{
-        RR = RR1;
-        REJ = REJ1;
-    }
+
     switch(*check){
             case 0:
-                if (byte==FLAG){
                 printf("0");
-                *check=1;
+                if (byte==FLAG){
+                    *check=1;
                 }
                 else{
-                *check=0;
+                    *check=0;
                 }
                 break;
             case 1:
+            printf("1");
                 if (byte==A2){
-                    printf("1");
-                *check=2;
+                    *check=2;
                 }
                 else if(byte==FLAG){
-                *check=1;
+                    *check=1;
                 }
                 else{
-                *check=0;
+                    *check=0;
                 }
                 break;
             case 2:
-                if (byte==RR){
-                    printf("2");
-                *check=3;
+                if (byte==RR0){
+                    *check=3;
+                    ns = 0;
                 }
-                else if (byte==REJ){
-                *check=0;
+                else if (byte == RR1){
+                    *check = 3;
+                    ns = 1;
+                }
+                else if (byte==REJ0){
+                    *check=3;
+                    ns = 1;
+                }
+                else if (byte == REJ1){
+                    *check = 3;
+                    ns = 0;
+
                 }
                 else if(byte==FLAG){
-                *check=1;
+                    *check=1;
                 }
                 else{
-                *check=0;
+                    *check=0;
                 }
                 break;
             case 3:
-                if (byte == (A2^RR)){
-                    printf("3");
-                *check=4;
+                if (byte == (A2^RR0) | byte == (A2 ^ RR1)){
+                    *check=4;
                 }
-                else if (byte == (A2^REJ)){
-                *check=0;
+                else if (byte == (A2^REJ0) | byte == (A2^REJ1)){
+                    *check=4;
                 }
                 else if(byte==FLAG){
-                *check=1;
+                    *check=1;
+                    return -1;
                 }
                 else{
-                *check=0;
+                    *check=0;
+                    return -1;
                 }
                 break;
             case 4:
+            printf("4");
                 if (byte==FLAG){
-                    printf("4");
-                *check=5;
+                    *check=5;
                 }
                 else{
-                *check=0;
+                    *check=0;
                 }
                 break;
         }
@@ -465,7 +473,7 @@ int responseState(int byte, int*check){
 ////////////////////////////////////////////////
 // TRANSMITERDISCSTATE
 ////////////////////////////////////////////////
-int transmiterDiscState(int byte, int*check){
+int transmiterDiscState(const unsigned char *byte, int*check){
     switch( *check){
                case 0:
                    if (byte==FLAG){
@@ -579,3 +587,40 @@ int receiverDiscState(int byte, int*check){
 
     return (*check == 5) ? 1 : 0;
 }
+
+int llsendDisc(int *sender){
+    int check = 0;
+    if (sender==0){
+        unsigned char byte = 0;
+        const unsigned char bufs [5] = {FLAG,A1,DISC, A1 ^ DISC, FLAG};
+        while (alarmCount < 3){
+            if (alarmEnabled == FALSE){
+                alarm(4);
+            if (writeBytesSerialPort(bufs, sizeof(bufs)) == -1) return 1;
+                sleep(1);
+                alarmEnabled = TRUE;
+            }
+            int read = readByteSerialPort(&byte);
+            if ( read == -1 ) return 1;
+            else if (read == 0) continue;
+            if (transmiterDiscState(bufs, &check)) break;
+        }
+
+    }
+    else{
+        int STOP = FALSE;
+        unsigned char byte = 0;
+        int check = 0;
+        while (STOP == FALSE){
+            int read = readByteSerialPort(&byte);
+            if ( read == -1 ) return 1;
+            else if (read == 0) continue;
+            if (receiverDiscState(byte, &check)) STOP = TRUE;
+        }
+        const unsigned char buf[5] = {FLAG,A1,DISC,A1^DISC,FLAG};
+        writeBytesSerialPort(buf,sizeof(buf));
+    }
+
+    return 1;
+}
+
