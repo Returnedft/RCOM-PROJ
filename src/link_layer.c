@@ -265,20 +265,21 @@ int llwrite(const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
-int llread(unsigned char *packet)
-{
+int llread(unsigned char *packet){
     int STOP = FALSE;
     unsigned char byte = 0;
     int check = 0;
     unsigned char BCC = 0;
     unsigned char last = 0;
     int dataCheck;
+    int i;
+    unsigned char data[100];
     while (STOP == FALSE){
         int read = readByteSerialPort(&byte);
         if ( read == -1 ) return 1;
         else if (read == 0) continue;
         else printf("Data = 0x%02X\n", byte);
-        dataCheck = receiveData(byte, &check, &BCC, &last);
+        dataCheck = receiveData(byte, &check, &BCC, &last, data ,&i);
         if (dataCheck != 0) STOP = TRUE;
     }
     unsigned char C;
@@ -339,7 +340,7 @@ int llclose(int showStatistics) {
 ////////////////////////////////////////////////
 // RECEIVEDATA
 ////////////////////////////////////////////////
-int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char *last){
+int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char *last, unsigned char* packet, int *i){
     unsigned char infoFrame;
     if (ns==0){
         infoFrame = 0x00;
@@ -403,6 +404,7 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
                 }
             }
             else{
+                packet[*i++] = *last;
                 *BCC = *BCC ^ *last;
                 *last = byte;
             }

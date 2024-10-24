@@ -72,7 +72,7 @@ int llread(unsigned char *packet);
 // Return "1" on success or "-1" on error.
 int llclose(int showStatistics);
 
-int receiveData(unsigned char byte, int *check, unsigned char *BCC, unsigned char *last);
+int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char *last, unsigned char* packet, int *i);
 
 int responseState(unsigned char byte, int *check);
 
