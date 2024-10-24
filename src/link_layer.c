@@ -2,6 +2,8 @@
 
 #include "link_layer.h"
 #include "serial_port.h"
+#include <string.h>
+#include <stdlib.h>
 
 // Alarm 
 #include "alarm.h"
@@ -15,9 +17,31 @@
 int ns = 0;
 
 
-//unsigned char * byteStuffing(const unsigned char *buf, int bufSize){
-//
-//}
+unsigned char * byteStuffing(const unsigned char *buf, int bufSize, int * contentSize,unsigned char * bcc){
+    unsigned char* content = (unsigned char*) malloc(bufSize*2);
+    int j = 0;
+
+    for (int i = 0; i<*contentSize; i++){
+        if (buf[i] == FLAG){
+            content[j] = 0x7d;
+            j++;
+            content[j] = 0x5e;
+            j++;
+        }
+        else if (buf[i] == ESC){
+            content[j] = 0x7d;
+            j++;
+            content[j] = 0x5d;
+            j++;
+        }
+        else content[j] = buf[i];
+        *bcc ^= buf[i];
+    }
+
+    *contentSize = j;
+
+    return content;
+}
 
 ////////////////////////////////////////////////
 // LLSENDSET 
@@ -234,13 +258,27 @@ int llwrite(const unsigned char *buf, int bufSize)
     unsigned char byte = 0;
     int check = 0;
     int responseCheck;
+    unsigned char* content = (unsigned char*) malloc(bufSize*2 + 6); // worst case scenario all data is flags or esc
+    
+    content[0] = FLAG;
+    content[1] = A1;
+    content[2] = C1;
+    content[3] = A1^C1;
+
+    int contentSize = 0;
+    unsigned char bcc = 0;
+    unsigned char * byteStuffedBuffer = byteStuffing(buf,bufSize,&contentSize,&bcc);
+    memcpy(content+4,byteStuffedBuffer,contentSize);
+
+    content[4+contentSize] = bcc;
+    content[5+contentSize] = FLAG;
 
     while (alarmCount < 3){
 
         if (alarmEnabled == FALSE){
         
           alarm(4);
-          if (writeBytesSerialPort(buf, bufSize) == -1) return 1;
+          if (writeBytesSerialPort(content, contentSize) == -1) return 1;
           sleep(1);
           alarmEnabled = TRUE;
         }
@@ -259,7 +297,7 @@ int llwrite(const unsigned char *buf, int bufSize)
 
     sleep(1);
 
-    return bufSize;
+    return contentSize;
 }
 
 ////////////////////////////////////////////////

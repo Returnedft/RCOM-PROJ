@@ -10,8 +10,8 @@ INCLUDE = include/
 BIN = bin/
 CABLE_DIR = cable/
 
-TX_SERIAL_PORT = /dev/ttyS0
-RX_SERIAL_PORT = /dev/ttyS1
+TX_SERIAL_PORT = /dev/ttyS10
+RX_SERIAL_PORT = /dev/ttyS11
 
 BAUD_RATE = 9600
 
@@ -23,7 +23,7 @@ RX_FILE = penguin-received.gif
 all: $(BIN)/main $(BIN)/cable
 
 $(BIN)/main: main.c $(SRC)/*.c
-	$(CC) $(CFLAGS) -o $@ $^ -I$(INCLUDE)
+	$(CC) $(CFLAGS) -o $@ $^ -I$(INCLUDE) -lm
 
 $(BIN)/cable: $(CABLE_DIR)/cable.c
 	$(CC) $(CFLAGS) -o $@ $^

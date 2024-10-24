@@ -60,7 +60,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             sequence++;
         }
 
-        free(content);  // Free dynamically allocated memory
+        free(content);  
     } else {
         llread((unsigned char*)serialPort);  // Cast to match the expected argument type
     }

@@ -38,6 +38,7 @@ extern int ns;
 #define REJ0 0x54
 #define REJ1 0X55
 #define DISC 0x0B
+#define ESC 0x7d
 
 // Open a connection using the "port" parameters defined in struct linkLayer.
 // Return "1" on success or "-1" on error.
