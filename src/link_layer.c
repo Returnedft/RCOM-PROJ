@@ -466,68 +466,9 @@ int responseState(int byte, int*check){
 }
 
 ////////////////////////////////////////////////
-// TRANSMITERDISCSTATE
+// DISCSTATE
 ////////////////////////////////////////////////
-int transmiterDiscState(const unsigned char *byte, int*check){
-    switch( *check){
-               case 0:
-                   if (byte==FLAG){
-                    *check=1;
-                   }
-                   else{
-                    *check=0;
-                   }
-                   break;
-               case 1:
-                   if (byte==A2){
-                    *check=2;
-                   }
-                   else if(byte==FLAG){
-                    *check=1;
-                   }
-                   else{
-                    *check=0;
-                   }
-                   break;
-               case 2:
-                   if (byte==DISC){
-                    *check=3;
-                   }
-                   else if(byte==FLAG){
-                    *check=1;
-                   }
-                   else{
-                    *check=0;
-                   }
-                   break;
-               case 3:
-                   if (byte == (A2^DISC)){
-                    *check=4;
-                   }
-                   else if(byte==FLAG){
-                    *check=1;
-                   }
-                   else{
-                    *check=0;
-                   }
-                   break;
-               case 4:
-                   if (byte==FLAG){
-                    *check=5;
-                   }
-                   else{
-                    *check=0;
-                   }
-                   break;
-           }    
-
-    return (*check == 5) ? 1 : 0;
-}
-
-////////////////////////////////////////////////
-// RECEIVERDISCSTATE
-////////////////////////////////////////////////
-int receiverDiscState(int byte, int*check){
+int discState(int byte, int*check, int sender){
     switch(*check){
                case 0:
                    if (byte==FLAG){
@@ -538,7 +479,10 @@ int receiverDiscState(int byte, int*check){
                    }
                    break;
                case 1:
-                   if (byte==A1){
+                   if (byte==A1 || sender == 0){
+                    *check=2;
+                   }
+                   if (byte==A2 || sender == 1){
                     *check=2;
                    }
                    else if(byte==FLAG){
@@ -598,7 +542,7 @@ int llsendDisc(int *sender){
             int read = readByteSerialPort(&byte);
             if ( read == -1 ) return 1;
             else if (read == 0) continue;
-            if (transmiterDiscState(bufs, &check)) break;
+            if (discState(bufs, &check, 0)) break;
         }
 
     }
@@ -610,7 +554,7 @@ int llsendDisc(int *sender){
             int read = readByteSerialPort(&byte);
             if ( read == -1 ) return 1;
             else if (read == 0) continue;
-            if (receiverDiscState(byte, &check)) STOP = TRUE;
+            if (discState(byte, &check, 1)) STOP = TRUE;
         }
         const unsigned char buf[5] = {FLAG,A1,DISC,A1^DISC,FLAG};
         writeBytesSerialPort(buf,sizeof(buf));

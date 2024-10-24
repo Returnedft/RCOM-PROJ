@@ -76,8 +76,6 @@ int receiveData(unsigned char byte, int *check, unsigned char *BCC, unsigned cha
 
 int responseState(int byte, int *check);
 
-int transmiterDiscState(const unsigned char *byte, int *check);
-
-int receiverDiscState(int byte, int *check);
+int discState(int byte, int *check, int sender);
 
 #endif // _LINK_LAYER_H_
