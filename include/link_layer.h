@@ -53,11 +53,11 @@ int llsendUA();
 
 //State Machine for Set command
 //Return "1" when all Set command correct or "0" if not
-int setState(int byte, int *check);
+int setState(unsigned char byte, int *check);
 
 //State Machine for UA command
 //Return "1" when all UA command correct or "0" if not
-int uaState(int byte, int *check, int sender);
+int uaState(unsigned char byte, int *check, int sender);
 
 // Send data in buf with size bufSize.
 // Return number of chars written, or "-1" on error.
@@ -74,8 +74,8 @@ int llclose(int showStatistics);
 
 int receiveData(unsigned char byte, int *check, unsigned char *BCC, unsigned char *last);
 
-int responseState(int byte, int *check);
+int responseState(unsigned char byte, int *check);
 
-int discState(int byte, int *check, int sender);
+int discState(unsigned char byte, int *check, int sender);
 
 #endif // _LINK_LAYER_H_

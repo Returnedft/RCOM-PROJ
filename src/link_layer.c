@@ -15,9 +15,9 @@
 int ns = 0;
 
 
-unsigned char * byteStuffing(const unsigned char *buf, int bufSize){
-    
-}
+//unsigned char * byteStuffing(const unsigned char *buf, int bufSize){
+//
+//}
 
 ////////////////////////////////////////////////
 // LLSENDSET 
@@ -82,7 +82,7 @@ int llsendUA(){
 ////////////////////////////////////////////////
 // UASTATE
 ////////////////////////////////////////////////
-int uaState(int byte, int *check, int sender){
+int uaState(unsigned char byte, int *check, int sender){
     switch(*check){
                case 0:
                    if (byte==FLAG){
@@ -144,7 +144,7 @@ int uaState(int byte, int *check, int sender){
 ////////////////////////////////////////////////
 // SETSTATE
 ////////////////////////////////////////////////
-int setState(int byte, int *check){
+int setState(unsigned char byte, int *check){
     switch(*check){
                case 0:
                    if (byte==FLAG){
@@ -221,6 +221,7 @@ int llopen(LinkLayer connectionParameters)
             return -1;
         }
     }
+    return 1;
 }
 
 ////////////////////////////////////////////////
@@ -300,13 +301,40 @@ int llread(unsigned char *packet)
 ////////////////////////////////////////////////
 // LLCLOSE
 ////////////////////////////////////////////////
-int llclose(int showStatistics)
-{
-    // TODO
-
+/* 
+int llclose(int showStatistics) {
+    if (connectionParameters.role == LlTx) {
+        llsendDisc(0);
+        alarmEnabled = 0;
+        alarmCount = 0;
+        while (alarmCount < 3) {
+            if (alarmEnabled == FALSE) {
+                alarm(4);
+                if (writeBytesSerialPort(buf, bufSize) == -1) return 1;
+                sleep(1);
+                alarmEnabled = TRUE;
+            }
+        }
+    }
+    else {
+        if (llsendDisc(1) == -1) {
+            return 0;
+        }
+        int STOP = FALSE;
+        unsigned char byte = 0;
+        int check = 0;
+        while (STOP == FALSE) {
+            int read = readByteSerialPort(&byte);
+            if ( read == -1 ) return 1;
+            else if (read == 0) continue;
+            else printf("Data = 0x%02X\n", byte);
+            uaState (byte, &check, 1);
+        }
+    }
     int clstat = closeSerialPort();
     return clstat;
 }
+*/
 
 ////////////////////////////////////////////////
 // RECEIVEDATA
@@ -390,7 +418,7 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
 ////////////////////////////////////////////////
 // RESPONSESTATE
 ////////////////////////////////////////////////
-int responseState(int byte, int*check){
+int responseState(unsigned char byte, int*check){
 
     switch(*check){
             case 0:
@@ -440,10 +468,10 @@ int responseState(int byte, int*check){
                 }
                 break;
             case 3:
-                if (byte == (A2^RR0) | byte == (A2 ^ RR1)){
+                if ((byte == (A2^RR0)) | (byte == (A2 ^ RR1))){
                     *check=4;
                 }
-                else if (byte == (A2^REJ0) | byte == (A2^REJ1)){
+                else if ((byte == (A2^REJ0)) | (byte == (A2^REJ1))){
                     *check=4;
                 }
                 else if(byte==FLAG){
@@ -471,62 +499,61 @@ int responseState(int byte, int*check){
 ////////////////////////////////////////////////
 // DISCSTATE
 ////////////////////////////////////////////////
-int discState(int byte, int*check, int sender){
-    switch(*check){
-               case 0:
-                   if (byte==FLAG){
-                    *check=1;
-                   }
-                   else{
-                    *check=0;
-                   }
-                   break;
-               case 1:
-                   if (byte==A1 || sender == 0){
-                    *check=2;
-                   }
-                   if (byte==A2 || sender == 1){
-                    *check=2;
-                   }
-                   else if(byte==FLAG){
-                    *check=1;
-                   }
-                   else{
-                    *check=0;
-                   }
-                   break;
-               case 2:
-                   if (byte==DISC){
-                    *check=3;
-                   }
-                   else if(byte==FLAG){
-                    *check=1;
-                   }
-                   else{
-                    *check=0;
-                   }
-                   break;
-               case 3:
-                   if (byte == (A1^DISC)){
-                    *check=4;
-                   }
-                   else if(byte==FLAG){
-                    *check=1;
-                   }
-                   else{
-                    *check=0;
-                   }
-                   break;
-               case 4:
-                   if (byte==FLAG){
-                    *check=5;
-                   }
-                   else{
-                    *check=0;
-                   }
-                   break;
-           }    
-
+int discState(unsigned char byte, int*check, int sender){
+    switch( *check){
+        case 0:
+            if (byte==FLAG){
+            *check=1;
+            }
+            else{
+            *check=0;
+            }
+            break;
+        case 1:
+            if (byte==A2 || sender == 1){
+            *check=2;
+            }
+            else if (byte == A1 || sender == 0){
+            *check=2;
+            }
+            else if(byte==FLAG){
+            *check=1;
+            }
+            else{
+            *check=0;
+            }
+            break;
+        case 2:
+            if (byte==DISC){
+            *check=3;
+            }
+            else if(byte==FLAG){
+            *check=1;
+            }
+            else{
+            *check=0;
+            }
+            break;
+        case 3:
+            if (byte == (A2^DISC)){
+            *check=4;
+            }
+            else if(byte==FLAG){
+            *check=1;
+            }
+            else{
+            *check=0;
+            }
+            break;
+        case 4:
+            if (byte==FLAG){
+            *check=5;
+            }
+            else{
+            *check=0;
+            }
+            break;
+    }
     return (*check == 5) ? 1 : 0;
 }
 
@@ -545,7 +572,7 @@ int llsendDisc(int *sender){
             int read = readByteSerialPort(&byte);
             if ( read == -1 ) return 1;
             else if (read == 0) continue;
-            if (discState(bufs, &check, 0)) break;
+            if (discState(byte, &check, 0)) break;
         }
 
     }
