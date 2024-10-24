@@ -14,6 +14,11 @@
 
 int ns = 0;
 
+
+unsigned char * byteStuffing(const unsigned char *buf, int bufSize){
+    
+}
+
 ////////////////////////////////////////////////
 // LLSENDSET 
 ////////////////////////////////////////////////
@@ -213,16 +218,6 @@ int llopen(LinkLayer connectionParameters)
             return -1;
         }
     }
-    if (connectionParameters.role == LlTx){
-        const unsigned char buff [10] = {FLAG,A1,0x00, A1 ^ 0x00, 0x34, 0x32, 0x37, 0x34 ^ 0x32 ^ 0x37, FLAG};
-        llwrite(buff,sizeof(buff));
-    }
-    else llread(connectionParameters.serialPort);
-    if (connectionParameters.role == LlTx){
-        //Disc
-    }
-    sleep(1);
-    return 1;
 }
 
 ////////////////////////////////////////////////

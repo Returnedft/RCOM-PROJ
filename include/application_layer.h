@@ -14,5 +14,6 @@
 //   filename: Name of the file to send / receive.
 void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename);
-
+unsigned char * createControlPacket(const unsigned int C, const char* name, long int length, int* packetSize);
+unsigned char* createDataPacket(int sequence, long int writeSize, unsigned char* data);
 #endif // _APPLICATION_LAYER_H_

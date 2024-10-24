@@ -1,14 +1,11 @@
-// Application layer protocol implementation
-
 #include "application_layer.h"
 #include "link_layer.h"
 #include <string.h>  // for strncpy
-
+#include <math.h>
 #include <stdio.h>
+#include <stdlib.h>  // For exit()
 
-void applicationLayer(const char *serialPort, const char *role, int baudRate,
-                      int nTries, int timeout, const char *filename)
-{
+void applicationLayer(const char *serialPort, const char *role, int baudRate, int nTries, int timeout, const char *filename) {
     LinkLayer linklayer;
 
     // Copy serialPort string into the struct safely
@@ -29,6 +26,85 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     linklayer.nRetransmissions = nTries;
     linklayer.timeout = timeout;
 
-    // Call llopen with the properly initialized linklayer
     llopen(linklayer);
+
+    if (linklayer.role == LlTx) {
+        FILE* file = fopen(filename, "rb");
+        if (file == NULL) exit(-1);
+
+        int start = ftell(file);
+        fseek(file, 0L, SEEK_END);
+        long int fileSize = ftell(file) - start;
+        fseek(file, start, SEEK_SET); // get back to the beginning of the file
+
+        int controlPacketSize;
+        unsigned char* startControlPacket = createControlPacket(1, filename, fileSize, &controlPacketSize);
+
+        if (llwrite(startControlPacket, controlPacketSize) == -1) exit(-1);
+
+        long int bytesRemaining = fileSize;
+        int sequence = 0;
+
+        unsigned char* content = (unsigned char*) malloc(fileSize);
+        fread(content, 1, fileSize, file); // Corrected fread usage
+
+        while (bytesRemaining > 0) {
+            int writeSize = bytesRemaining > MAX_PAYLOAD_SIZE ? MAX_PAYLOAD_SIZE : bytesRemaining;
+
+            unsigned char* data = content + (sequence * MAX_PAYLOAD_SIZE);
+            unsigned char* dataPacket = createDataPacket(sequence, writeSize, data);
+
+            if (llwrite(dataPacket, writeSize + 4) == -1) exit(-1);
+
+            bytesRemaining -= writeSize;
+            sequence++;
+        }
+
+        free(content);  // Free dynamically allocated memory
+    } else {
+        llread((unsigned char*)serialPort);  // Cast to match the expected argument type
+    }
+
+    return;
+}
+
+unsigned char* createControlPacket(const unsigned int C, const char* name, long int length, int* packetSize) {
+    int fileSize = (int) log2(length) / 8 + 5;
+    const int nameLength = strlen(name);
+
+    *packetSize = fileSize + nameLength;
+
+    unsigned char* controlPacket = (unsigned char*) malloc(*packetSize); // Dynamically allocate memory
+
+    controlPacket[0] = C;
+
+    unsigned int pos = 1;
+    controlPacket[pos++] = 0;
+    controlPacket[pos++] = fileSize;
+
+    for (int i = 0; i < fileSize; i++) {
+        controlPacket[pos + fileSize - 1 - i] = length & 0xFF;
+        length >>= 8;
+    }
+
+    pos += fileSize;
+    controlPacket[pos++] = 1;
+    controlPacket[pos++] = nameLength;
+
+    memcpy(controlPacket + pos, name, nameLength);
+
+    return controlPacket;
+}
+
+unsigned char* createDataPacket(int sequence, long int writeSize, unsigned char* data) {
+    unsigned char* dataPacket_ = (unsigned char*) malloc(writeSize + 4); // Dynamically allocate memory
+
+    dataPacket_[0] = 2;
+    dataPacket_[1] = sequence;
+    dataPacket_[2] = (writeSize >> 8) & 0xFF;
+    dataPacket_[3] = writeSize & 0xFF;
+
+    memcpy(dataPacket_ + 4, data, writeSize);
+
+    return dataPacket_;
 }
