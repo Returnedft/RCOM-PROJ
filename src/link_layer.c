@@ -44,7 +44,7 @@ int llsendSet(const unsigned char *buf, int bufSize){
 
         if ( read == -1 ) return 1;
         else if (read == 0) continue;
-        if (uaState(byte, &check)) break;
+        if (uaState(byte, &check, 0)) break;
     }
 
     if (check == 5 ) printf("Ua received \n");
@@ -82,7 +82,7 @@ int llsendUA(){
 ////////////////////////////////////////////////
 // UASTATE
 ////////////////////////////////////////////////
-int uaState(int byte, int *check){
+int uaState(int byte, int *check, int sender){
     switch(*check){
                case 0:
                    if (byte==FLAG){
@@ -93,7 +93,10 @@ int uaState(int byte, int *check){
                    }
                    break;
                case 1:
-                   if (byte==A2){
+                   if (byte==A1 || sender == 0){
+                       *check=2;
+                   }
+                   if (byte==A2 || sender == 1){
                        *check=2;
                    }
                    else if(byte==FLAG){

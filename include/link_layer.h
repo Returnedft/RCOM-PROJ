@@ -57,7 +57,7 @@ int setState(int byte, int *check);
 
 //State Machine for UA command
 //Return "1" when all UA command correct or "0" if not
-int uaState(int byte, int *check);
+int uaState(int byte, int *check, int sender);
 
 // Send data in buf with size bufSize.
 // Return number of chars written, or "-1" on error.
