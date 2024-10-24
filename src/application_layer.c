@@ -108,3 +108,20 @@ unsigned char* createDataPacket(int sequence, long int writeSize, unsigned char*
 
     return dataPacket_;
 }
+
+void readControlPacket(unsigned char* packet, unsigned long int *fileSize, unsigned char *name) {
+    unsigned char bytesOfSize, bytesOfName;
+    bytesOfSize = packet[2];
+    unsigned char fileSizeData[bytesOfSize];
+    memcpy(fileSizeData, packet+3, bytesOfSize);
+    for(unsigned int i = 0; i < bytesOfSize; i++){
+        *fileSize |= (fileSizeData[bytesOfSize-i-1] << (8*i));
+    }
+    bytesOfName = packet[bytesOfSize+4];
+    name = (unsigned char*)malloc(bytesOfName);
+    memcpy(name, packet+bytesOfSize+5, bytesOfName);
+}
+
+void readDataPacket(unsigned char* buf, const unsigned char* packet, const unsigned int size) {
+    memcpy(buf,packet+4,size-4);
+}
