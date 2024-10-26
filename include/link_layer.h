@@ -38,7 +38,7 @@ extern int ns;
 #define REJ0 0x54
 #define REJ1 0X55
 #define DISC 0x0B
-#define ESC 0x7d
+#define ESC 0x7D
 
 // Open a connection using the "port" parameters defined in struct linkLayer.
 // Return "1" on success or "-1" on error.
@@ -66,7 +66,7 @@ int llwrite(const unsigned char *buf, int bufSize);
 
 // Receive data in packet.
 // Return number of chars read, or "-1" on error.
-int llread(unsigned char *packet);
+int llread(unsigned char *packet, unsigned char *data);
 
 // Close previously opened connection.
 // if showStatistics == TRUE, link layer should print statistics in the console on close.

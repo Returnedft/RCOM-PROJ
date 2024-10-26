@@ -301,21 +301,20 @@ int llwrite(const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
-int llread(unsigned char *packet){
+int llread(unsigned char *packet, unsigned char *data){
    int STOP = FALSE;
    unsigned char byte = 0;
    int check = 0;
    unsigned char BCC = 0;
-   unsigned char *last = NULL;
+   unsigned char last = 0;
    int dataCheck;
-   int i;
-   unsigned char data[100];
+   int i = 0;
    while (STOP == FALSE){
        int read = readByteSerialPort(&byte);
        if ( read == -1 ) return 1;
        else if (read == 0) continue;
        else printf("Data = 0x%02X\n", byte);
-       dataCheck = receiveData(byte, &check, &BCC, last, data ,&i);
+       dataCheck = receiveData(byte, &check, &BCC, &last, data ,&i);
        if (dataCheck != 0) STOP = TRUE;
    }
    unsigned char C;
@@ -323,16 +322,23 @@ int llread(unsigned char *packet){
        if (ns == 1) C = REJ1;
        else C = REJ0;
    }else{
-       printf("Received data \n");
        if (ns == 1) C = RR1;
        else C = RR0;
    }
-   const unsigned char buf[5] = {FLAG,A2,C,A2^C,FLAG};
-
-   writeBytesSerialPort(buf,sizeof(buf));
+   printf("Received data ");
+      printf("%d\n", i);
+      unsigned char *buff = (unsigned char*)malloc(5);
+    buff[0]=FLAG;
+    buff[1]=A2;
+    buff[2]=C;
+    buff[3]=A2^C;
+    buff[4]=FLAG;
+    printf("oi1");
+   writeBytesSerialPort(buff,sizeof(buff));
+   printf("oi2");
    sleep(1);
-    packet=data;
-   return 0;
+   free(buff);
+   return i;
 }
 
 ////////////////////////////////////////////////
@@ -377,6 +383,8 @@ int llclose(int showStatistics) {
 // RECEIVEDATA
 ////////////////////////////////////////////////
 int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char *last, unsigned char* packet, int *i){
+    printf("Last = 0x%02X\n", *last);
+    printf("%d\n", *check);
    unsigned char infoFrame;
    if (ns==0){
        infoFrame = 0x00;
@@ -429,37 +437,40 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
        case 4:
            printf("data");
            if(byte==FLAG){
+                printf("BCC = 0x%02X\n", *BCC);
                if (*BCC==*last){
-               *check=5;
+               *check=6;
                }else{
                *check=0;
                }
            }
-           else if(byte==ESC){
+           else if(byte==0x7D){
                 *check=5;
            }
            else{
-               packet[*i++] = *last;
-               *BCC = *BCC ^ *last;
-               if (last != NULL)*last = byte;
+                if (*last != 0x7D){
+                    packet[*i++] = *last;
+                    *BCC = *BCC ^ *last;
+                }
+               *last = byte;
            }
            break;
         case 5:
-            if(byte==0x5d){ //esc
-                packet[*i++] = ESC;
-                *BCC = *BCC ^ ESC;
+            if(byte==0x5D){ //esc
+                packet[*i++] = 0x7D;
+                *BCC = *BCC ^ 0x7D;
                 *check=4;
-            }else if(byte==0x5e){ //flag
+            }else if(byte==0x5E){ //flag
                 packet[*i++] = FLAG;
                 *BCC = *BCC ^ FLAG;
                 *check=4;
             }else{
                 *check=0; //?
             }
-            last=NULL;
+            *last=0x7D;
             break;
    }
-   if (*check == 5){ 
+   if (*check == 6){ 
        ns = ns ^ 1;
        return 1;
    }

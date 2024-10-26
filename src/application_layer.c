@@ -62,16 +62,30 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
 
         free(content);  
     } else {
-        llread((unsigned char*)serialPort);  // Cast to match the expected argument type
-        if (serialPort[0]==1 || serialPort[0]==3){
-            unsigned long int fileSize;
-            unsigned char name;
-            readControlPacket((const unsigned char*)serialPort, &fileSize, &name);
+        unsigned char *packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
+        int packetSize = -1;
+        while ((packetSize = llread((unsigned char*)serialPort, packet)) < 0);
+        unsigned long int rxFileSize = 0;
+        unsigned char* name = 0;
+        readControlPacket(packet, &rxFileSize, name); 
+        FILE* newFile = fopen((char *) name, "wb+");
+        while (1) {    
+            while ((packetSize = llread((unsigned char*)serialPort, packet)) < 0);
+            printf("oi1");
+            if(packetSize == 0) break;
+            else if(packet[0] != 3){
+                printf("oi2");
+                unsigned char *buf = (unsigned char*)malloc(packetSize);
+                printf("oi3");
+                readDataPacket(buf, packet, packetSize);
+                printf("oi4");
+                fwrite(buf, sizeof(unsigned char), packetSize-4, newFile);
+                printf("oi5");
+                free(buf);
+            }
+            else continue;
         }
-        else{
-            unsigned char buf;
-            readDataPacket(&buf, (const unsigned char*)serialPort, (unsigned int)sizeof(serialPort));
-        }
+        fclose(newFile);
     }
 
     return;
