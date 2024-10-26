@@ -306,7 +306,7 @@ int llread(unsigned char *packet){
    unsigned char byte = 0;
    int check = 0;
    unsigned char BCC = 0;
-   unsigned char last = 0;
+   unsigned char *last = NULL;
    int dataCheck;
    int i;
    unsigned char data[100];
@@ -315,7 +315,7 @@ int llread(unsigned char *packet){
        if ( read == -1 ) return 1;
        else if (read == 0) continue;
        else printf("Data = 0x%02X\n", byte);
-       dataCheck = receiveData(byte, &check, &BCC, &last, data ,&i);
+       dataCheck = receiveData(byte, &check, &BCC, last, data ,&i);
        if (dataCheck != 0) STOP = TRUE;
    }
    unsigned char C;
@@ -441,7 +441,7 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
            else{
                packet[*i++] = *last;
                *BCC = *BCC ^ *last;
-               *last = byte;
+               if (last != NULL)*last = byte;
            }
            break;
         case 5:
@@ -456,7 +456,7 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
             }else{
                 *check=0; //?
             }
-            *last=ESC;
+            last=NULL;
             break;
    }
    if (*check == 5){ 
