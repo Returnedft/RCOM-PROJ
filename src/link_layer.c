@@ -331,7 +331,7 @@ int llread(unsigned char *packet){
 
    writeBytesSerialPort(buf,sizeof(buf));
    sleep(1);
-
+    packet=data;
    return 0;
 }
 
@@ -435,12 +435,29 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
                *check=0;
                }
            }
+           else if(byte==ESC){
+                *check=5;
+           }
            else{
                packet[*i++] = *last;
                *BCC = *BCC ^ *last;
                *last = byte;
            }
            break;
+        case 5:
+            if(byte==0x5d){ //esc
+                packet[*i++] = ESC;
+                *BCC = *BCC ^ ESC;
+                *check=4;
+            }else if(byte==0x5e){ //flag
+                packet[*i++] = FLAG;
+                *BCC = *BCC ^ FLAG;
+                *check=4;
+            }else{
+                *check=0; //?
+            }
+            *last=ESC;
+            break;
    }
    if (*check == 5){ 
        ns = ns ^ 1;

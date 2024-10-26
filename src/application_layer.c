@@ -63,6 +63,15 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         free(content);  
     } else {
         llread((unsigned char*)serialPort);  // Cast to match the expected argument type
+        if (serialPort[0]==1 || serialPort[0]==3){
+            unsigned long int fileSize;
+            unsigned char name;
+            readControlPacket((const unsigned char*)serialPort, &fileSize, &name);
+        }
+        else{
+            unsigned char buf;
+            readDataPacket(&buf, (const unsigned char*)serialPort, (unsigned int)sizeof(serialPort));
+        }
     }
 
     return;
@@ -109,7 +118,7 @@ unsigned char* createDataPacket(int sequence, long int writeSize, unsigned char*
     return dataPacket_;
 }
 
-void readControlPacket(unsigned char* packet, unsigned long int *fileSize, unsigned char *name) {
+void readControlPacket(const unsigned char* packet, unsigned long int *fileSize, unsigned char *name) {
     unsigned char bytesOfSize, bytesOfName;
     bytesOfSize = packet[2];
     unsigned char fileSizeData[bytesOfSize];
