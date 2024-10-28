@@ -88,7 +88,12 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         }
 
         free(content); // Free the main file content buffer
-
+        
+        unsigned char *controlPacketEnd = createControlPacket(3, filename, fileSize, &controlPacketSize);
+        if(llwrite(controlPacketEnd, controlPacketSize) == -1) { 
+            printf("Exit: error in end packet\n");
+            exit(-1);
+        }
     } else {
         unsigned char *data = (unsigned char *)malloc(6 + 2*MAX_PAYLOAD_SIZE);
         int packetSize = llread(data);
@@ -96,17 +101,16 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         unsigned long int rxFileSize = 0;
         unsigned char* name = 0;
         readControlPacket(data, &rxFileSize, name); 
-        FILE* newFile = fopen((char *) filename, "wb+");
+        FILE* newFile = fopen((char *) filename, "wb");
         while (1) {
-            while ((packetSize = llread(data)) < 0);
-            if(packetSize == 0) break;
-            else if(data[0] != 3){
+            packetSize = llread(data);
+            if(data[0] != 3){
                 unsigned char *buf = (unsigned char*)malloc(packetSize);
                 readDataPacket(buf, data, packetSize);
                 fwrite(buf, sizeof(unsigned char), packetSize-4, newFile);
                 free(buf);
             }
-            else continue;
+            else break;
         }
         fclose(newFile);
     }
