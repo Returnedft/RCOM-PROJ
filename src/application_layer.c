@@ -27,64 +27,90 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     linklayer.timeout = timeout;
 
     llopen(linklayer);
-    printf("oii");
     if (linklayer.role == LlTx) {
+
         FILE* file = fopen(filename, "rb");
         if (file == NULL) exit(-1);
 
-        int start = ftell(file);
+        // Determine the file size
         fseek(file, 0L, SEEK_END);
-        long int fileSize = ftell(file) - start;
-        fseek(file, start, SEEK_SET); // get back to the beginning of the file
+        long int fileSize = ftell(file);
+        fseek(file, 0L, SEEK_SET); // get back to the beginning of the file
 
         int controlPacketSize;
         unsigned char* startControlPacket = createControlPacket(1, filename, fileSize, &controlPacketSize);
-        if (llwrite(startControlPacket, controlPacketSize) == -1) exit(-1);
+        if (llwrite(startControlPacket, controlPacketSize) == -1) {
+            free(startControlPacket);
+            fclose(file);
+            exit(-1);
+        }
+        free(startControlPacket); // Free the control packet after use
 
         long int bytesRemaining = fileSize;
         int sequence = 0;
 
-        unsigned char* content = (unsigned char*) malloc(fileSize);
-        fread(content, 1, fileSize, file); // Corrected fread usage
+        // Allocate memory for the entire file content
+        unsigned char* content = (unsigned char*) malloc(fileSize * sizeof(unsigned char));
+        if (content == NULL) {
+            fclose(file);
+            exit(-1);
+        }
 
+        // Read the file into memory
+        fread(content, sizeof(unsigned char), fileSize, file);
+        fclose(file);
+
+        // Loop to send data packets
+        long int offset = 0;
         while (bytesRemaining > 0) {
             int writeSize = bytesRemaining > MAX_PAYLOAD_SIZE ? MAX_PAYLOAD_SIZE : bytesRemaining;
 
-            unsigned char* data = content + (sequence * MAX_PAYLOAD_SIZE);
+            unsigned char* data = (unsigned char*) malloc(writeSize * sizeof(unsigned char));
+            if (data == NULL) {
+                free(content);
+                exit(-1);
+            }
+            
+            memcpy(data, content + offset, writeSize);
             unsigned char* dataPacket = createDataPacket(sequence, writeSize, data);
 
-            if (llwrite(dataPacket, writeSize + 4) == -1) exit(-1);
+            if (llwrite(dataPacket, writeSize + 4) == -1) {
+                free(dataPacket);
+                free(data);
+                free(content);
+                exit(-1);
+            }
+
+            free(dataPacket); // Free the data packet after sending
+            free(data);       // Free the temporary data buffer
 
             bytesRemaining -= writeSize;
-            sequence++;
+            offset += writeSize;
+            sequence = (sequence + 1) % 255;
         }
 
-        free(content);  
+        free(content); // Free the main file content buffer
+
     } else {
-        unsigned char *data = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
-        int packetSize = -1;
-        while ((packetSize = llread(data)) < 0);
-        /*unsigned long int rxFileSize = 0;
+        unsigned char *data = (unsigned char *)malloc(6 + 2*MAX_PAYLOAD_SIZE);
+        int packetSize = llread(data);
+        if (packetSize == -1) exit(-1);
+        unsigned long int rxFileSize = 0;
         unsigned char* name = 0;
-        readControlPacket(packet, &rxFileSize, name); 
-        FILE* newFile = fopen((char *) name, "wb+");
+        readControlPacket(data, &rxFileSize, name); 
+        FILE* newFile = fopen((char *) filename, "wb+");
         while (1) {
-            while ((packetSize = llread((unsigned char*)serialPort, packet)) < 0);
-            printf("oi1");
+            while ((packetSize = llread(data)) < 0);
             if(packetSize == 0) break;
-            else if(packet[0] != 3){
-                printf("oi2");
+            else if(data[0] != 3){
                 unsigned char *buf = (unsigned char*)malloc(packetSize);
-                printf("oi3");
-                readDataPacket(buf, packet, packetSize);
-                printf("oi4");
+                readDataPacket(buf, data, packetSize);
                 fwrite(buf, sizeof(unsigned char), packetSize-4, newFile);
-                printf("oi5");
                 free(buf);
             }
             else continue;
         }
-        fclose(newFile);*/
+        fclose(newFile);
     }
 
     return;

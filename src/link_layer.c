@@ -33,9 +33,11 @@ unsigned char * byteStuffing(const unsigned char *buf, int bufSize, int * conten
            content[j] = 0x5d;
            j++;
        }
-       else content[j] = buf[i];
+       else {
+        content[j] = buf[i];
+        j++;
+       }
        *bcc ^= buf[i];
-       printf("Val = 0x%02X\n",buf[i]);
    }
 
    *contentSize = j;
@@ -255,9 +257,6 @@ int llwrite(const unsigned char *buf, int bufSize)
    int check = 0;
    int responseCheck;
    unsigned char* content = (unsigned char*) malloc(bufSize*2 + 6); // worst case scenario all data is flags or esc
-          for (int i = 0; i<bufSize; i++){
-        printf("buf = 0x%02X\n",buf[i]);
-    }
    content[0] = FLAG;
    content[1] = A1;
    content[2] = ns == 1 ? 0x80 : 0x00;
@@ -266,9 +265,6 @@ int llwrite(const unsigned char *buf, int bufSize)
    int contentSize = 0;
    unsigned char bcc = 0;
    unsigned char * byteStuffedBuffer = byteStuffing(buf,bufSize,&contentSize,&bcc);
-       for (int i = 0; i<contentSize; i++){
-        printf("vvVal = 0x%02X\n",content[i]);
-    }
    memcpy(content+4,byteStuffedBuffer,contentSize);
    content[4+contentSize] = bcc;
    content[5+contentSize] = FLAG;
@@ -276,7 +272,7 @@ int llwrite(const unsigned char *buf, int bufSize)
    while (alarmCount < 3){
 
        if (alarmEnabled == FALSE){
-        if (writeBytesSerialPort(content, contentSize) == -1) return -1;
+         if (writeBytesSerialPort(content, contentSize) == -1) return -1;
          alarm(4);
          sleep(1);
          alarmEnabled = TRUE;
@@ -329,10 +325,8 @@ int llread(unsigned char *data){
     buff[1]=A2;
     buff[2]=C;
     buff[3]=A2^C;
-    buff[4]=FLAG;
-    printf("oi1");
+   buff[4]=FLAG;
    writeBytesSerialPort(buff,sizeof(buff));
-   printf("oi2");
    sleep(1);
    free(buff);
    return i;
@@ -380,8 +374,6 @@ int llclose(int showStatistics) {
 // RECEIVEDATA
 ////////////////////////////////////////////////
 int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char *last, unsigned char* packet, int *i){
-    printf("Last = 0x%02X\n", *last);
-    printf("%d\n", *check);
    unsigned char infoFrame;
    if (ns==0){
        infoFrame = 0x00;
@@ -432,9 +424,7 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
            }
            break;
        case 4:
-           printf("data");
            if(byte==FLAG){
-                printf("BCC = 0x%02X\n", *BCC);
                if (*BCC==*last){
                *check=6;
                }else{
@@ -541,7 +531,6 @@ int responseState(unsigned char byte, int*check){
                }
                break;
            case 4:
-           printf("4");
                if (byte==FLAG){
                    *check=5;
                }
