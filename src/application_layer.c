@@ -27,7 +27,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     linklayer.timeout = timeout;
 
     llopen(linklayer);
-
+    printf("oii");
     if (linklayer.role == LlTx) {
         FILE* file = fopen(filename, "rb");
         if (file == NULL) exit(-1);
@@ -39,7 +39,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
 
         int controlPacketSize;
         unsigned char* startControlPacket = createControlPacket(1, filename, fileSize, &controlPacketSize);
-
         if (llwrite(startControlPacket, controlPacketSize) == -1) exit(-1);
 
         long int bytesRemaining = fileSize;
@@ -62,14 +61,14 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
 
         free(content);  
     } else {
-        unsigned char *packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
+        unsigned char *data = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
         int packetSize = -1;
-        while ((packetSize = llread((unsigned char*)serialPort, packet)) < 0);
-        unsigned long int rxFileSize = 0;
+        while ((packetSize = llread(data)) < 0);
+        /*unsigned long int rxFileSize = 0;
         unsigned char* name = 0;
         readControlPacket(packet, &rxFileSize, name); 
         FILE* newFile = fopen((char *) name, "wb+");
-        while (1) {    
+        while (1) {
             while ((packetSize = llread((unsigned char*)serialPort, packet)) < 0);
             printf("oi1");
             if(packetSize == 0) break;
@@ -85,24 +84,30 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             }
             else continue;
         }
-        fclose(newFile);
+        fclose(newFile);*/
     }
 
     return;
 }
 
 unsigned char* createControlPacket(const unsigned int C, const char* name, long int length, int* packetSize) {
-    int fileSize = (int) log2(length) / 8 + 5;
-    const int nameLength = strlen(name);
+    int fileSize=0;
+    unsigned int tempSize = length;
+    while (tempSize>0){
+        fileSize++;
+        tempSize >>= 8;
 
-    *packetSize = fileSize + nameLength;
-
+    }
+    int nameSize= strlen(name);
+    *packetSize = fileSize+nameSize+5;
+    
+    printf("%d",*packetSize);
     unsigned char* controlPacket = (unsigned char*) malloc(*packetSize); // Dynamically allocate memory
 
     controlPacket[0] = C;
 
     unsigned int pos = 1;
-    controlPacket[pos++] = 0;
+    controlPacket[pos++] = 0x00;
     controlPacket[pos++] = fileSize;
 
     for (int i = 0; i < fileSize; i++) {
@@ -112,10 +117,10 @@ unsigned char* createControlPacket(const unsigned int C, const char* name, long 
 
     pos += fileSize;
     controlPacket[pos++] = 1;
-    controlPacket[pos++] = nameLength;
+    controlPacket[pos++] = nameSize;
 
-    memcpy(controlPacket + pos, name, nameLength);
-
+    memcpy(controlPacket + pos, name, nameSize);
+    
     return controlPacket;
 }
 

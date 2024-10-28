@@ -20,7 +20,6 @@ int ns = 0;
 unsigned char * byteStuffing(const unsigned char *buf, int bufSize, int * contentSize,unsigned char * bcc){
    unsigned char* content = (unsigned char*) malloc(bufSize*2);
    int j = 0;
-   printf("Val = %d\n",buf[0]);
    for (int i = 0; i<bufSize; i++){
        if (buf[i] == FLAG){
            content[j] = 0x7d;
@@ -36,7 +35,7 @@ unsigned char * byteStuffing(const unsigned char *buf, int bufSize, int * conten
        }
        else content[j] = buf[i];
        *bcc ^= buf[i];
-       printf("Val = %d\n",buf[i]);
+       printf("Val = 0x%02X\n",buf[i]);
    }
 
    *contentSize = j;
@@ -96,11 +95,9 @@ int llsendUA(){
 
    }
    const unsigned char buf[5] = {FLAG,A2,C2,A2^C2,FLAG};
-
    writeBytesSerialPort(buf,sizeof(buf));
    sleep(1);
    printf("Sended UA \n");
-
    return 0;
 }
 
@@ -231,8 +228,8 @@ int setState(unsigned char byte, int *check){
 ////////////////////////////////////////////////
 int llopen(LinkLayer connectionParameters)
 {
-   if (openSerialPort(connectionParameters.serialPort,
-                      connectionParameters.baudRate) < 0)
+    int fd_;
+   if ((fd_ = openSerialPort(connectionParameters.serialPort,connectionParameters.baudRate)) < 0)
    {
        return -1;
    }
@@ -242,11 +239,9 @@ int llopen(LinkLayer connectionParameters)
        llsendSet(buf,sizeof(buf));
    }
    else {
-       if (llsendUA() == -1){
-           return -1;
-       }
+       llsendUA();
    }
-   return 1;
+   return fd_;
 }
 
 ////////////////////////////////////////////////
@@ -260,7 +255,9 @@ int llwrite(const unsigned char *buf, int bufSize)
    int check = 0;
    int responseCheck;
    unsigned char* content = (unsigned char*) malloc(bufSize*2 + 6); // worst case scenario all data is flags or esc
-   
+          for (int i = 0; i<bufSize; i++){
+        printf("buf = 0x%02X\n",buf[i]);
+    }
    content[0] = FLAG;
    content[1] = A1;
    content[2] = ns == 1 ? 0x80 : 0x00;
@@ -269,24 +266,24 @@ int llwrite(const unsigned char *buf, int bufSize)
    int contentSize = 0;
    unsigned char bcc = 0;
    unsigned char * byteStuffedBuffer = byteStuffing(buf,bufSize,&contentSize,&bcc);
+       for (int i = 0; i<contentSize; i++){
+        printf("vvVal = 0x%02X\n",content[i]);
+    }
    memcpy(content+4,byteStuffedBuffer,contentSize);
-
    content[4+contentSize] = bcc;
    content[5+contentSize] = FLAG;
 
    while (alarmCount < 3){
 
        if (alarmEnabled == FALSE){
-       
+        if (writeBytesSerialPort(content, contentSize) == -1) return -1;
          alarm(4);
-         if (writeBytesSerialPort(content, contentSize) == -1) return 1;
          sleep(1);
          alarmEnabled = TRUE;
        }
 
        int read = readByteSerialPort(&byte);
-
-       if ( read == -1 ) return 1;
+       if ( read == -1 ) return -1;
        else if (read == 0) continue;
        responseCheck = responseState(byte, &check);
        if (responseCheck == 1) break;
@@ -301,7 +298,7 @@ int llwrite(const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
-int llread(unsigned char *packet, unsigned char *data){
+int llread(unsigned char *data){
    int STOP = FALSE;
    unsigned char byte = 0;
    int check = 0;
@@ -312,7 +309,7 @@ int llread(unsigned char *packet, unsigned char *data){
    while (STOP == FALSE){
        int read = readByteSerialPort(&byte);
        if ( read == -1 ) return 1;
-       else if (read == 0) continue;
+       if ( read == 0 ) continue;
        else printf("Data = 0x%02X\n", byte);
        dataCheck = receiveData(byte, &check, &BCC, &last, data ,&i);
        if (dataCheck != 0) STOP = TRUE;
@@ -449,7 +446,7 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
            }
            else{
                 if (*last != 0x7D){
-                    packet[*i++] = *last;
+                    packet[(*i)++] = *last;
                     *BCC = *BCC ^ *last;
                 }
                *last = byte;
@@ -457,11 +454,11 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
            break;
         case 5:
             if(byte==0x5D){ //esc
-                packet[*i++] = 0x7D;
+                packet[(*i)++] = 0x7D;
                 *BCC = *BCC ^ 0x7D;
                 *check=4;
             }else if(byte==0x5E){ //flag
-                packet[*i++] = FLAG;
+                packet[(*i)++] = FLAG;
                 *BCC = *BCC ^ FLAG;
                 *check=4;
             }else{
