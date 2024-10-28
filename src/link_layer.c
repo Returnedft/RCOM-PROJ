@@ -265,13 +265,16 @@ int llwrite(const unsigned char *buf, int bufSize){
     unsigned char bcc = 0;
     unsigned char * byteStuffedBuffer = byteStuffing(buf,bufSize,&contentSize,&bcc);
     memcpy(content+4,byteStuffedBuffer,contentSize);
+    printf("0x%02X\n\n", bcc);
     content[4+contentSize] = bcc;
     content[5+contentSize] = FLAG;
-
+    for (int i=0; i<contentSize+6; i++){
+        printf("0x%02X\n", content[i]);
+    }
     while (alarmCount < 3){
         if (alarmEnabled == FALSE){
             alarm(4);
-            if (writeBytesSerialPort(content, contentSize) == -1) return -1;
+            if (writeBytesSerialPort(content, contentSize+6) == -1) return -1;
             sleep(1);
             alarmEnabled = TRUE;
         }
@@ -295,8 +298,6 @@ int llread(unsigned char *data){
     int STOP = FALSE;
     unsigned char byte = 0;
     int check = 0;
-    unsigned char BCC = 0;
-    unsigned char last = 0;
     int dataCheck;
     int i = 0;
     while (STOP == FALSE){
@@ -304,7 +305,7 @@ int llread(unsigned char *data){
         if ( read == -1 ) return 1;
         if ( read == 0 ) continue;
         else printf("Data = 0x%02X\n", byte);
-        dataCheck = receiveData(byte, &check, &BCC, &last, data ,&i);
+        dataCheck = receiveData(byte, &check, data ,&i);
         if (dataCheck != 0) STOP = TRUE;
     }
     unsigned char C;
@@ -370,7 +371,7 @@ int llclose(int showStatistics) {
 ////////////////////////////////////////////////
 // RECEIVEDATA
 ////////////////////////////////////////////////
-int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char *last, unsigned char* packet, int *i){
+int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i){
     unsigned char infoFrame;
     if (ns==0){
         infoFrame = 0x00;
@@ -380,6 +381,7 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
     }
     switch(*check){
         case 0:
+            printf("1");
             if (byte==FLAG){
             *check=1;
             }
@@ -388,6 +390,7 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
             }
             break;
         case 1:
+            printf("2");
             if (byte==A1){
             *check=2;
             }
@@ -399,6 +402,7 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
             }
             break;
         case 2:
+            printf("3");
             if (byte==infoFrame){
             *check=3;
             }
@@ -410,6 +414,7 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
             }
             break;
         case 3:
+            printf("4");
             if (byte==(A1 ^ infoFrame)){
             *check=4;
             }
@@ -422,36 +427,36 @@ int receiveData(unsigned char byte, int*check, unsigned char *BCC, unsigned char
             break;
         case 4:
             if(byte==FLAG){
-                if (*BCC==*last){
-                *check=6;
+                unsigned char bcc= packet[0];
+                unsigned char bcc2 = packet[*i-1];
+                (*i)--;
+                packet[*i] = '\0';
+                printf("bcc2 = 0x%02X\n", bcc2);
+                for (unsigned int j = 1; j < *i; j++)
+                    bcc ^= packet[j];
+                printf("bcc = 0x%02X\n", bcc);
+                if (bcc==bcc2){
+                    *check=6;
                 }else{
-                *check=0;
+                    *check=0;
                 }
             }
             else if(byte==0x7D){
-                    *check=5;
+                *check=5;
             }
             else{
-                    if (*last != 0x7D){
-                        packet[(*i)++] = *last;
-                        *BCC = *BCC ^ *last;
-                    }
-                *last = byte;
+                packet[(*i)++] = byte;
             }
             break;
         case 5:
+            printf("6");
             if(byte==0x5D){ //esc
                 packet[(*i)++] = 0x7D;
-                *BCC = *BCC ^ 0x7D;
                 *check=4;
             }else if(byte==0x5E){ //flag
                 packet[(*i)++] = FLAG;
-                *BCC = *BCC ^ FLAG;
                 *check=4;
-            }else{
-                *check=0; //?
             }
-            *last=0x7D;
             break;
     }
     if (*check == 6){ 

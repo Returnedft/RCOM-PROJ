@@ -80,10 +80,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 free(content);
                 exit(-1);
             }
-
             free(dataPacket); // Free the data packet after sending
             free(data);       // Free the temporary data buffer
-
             bytesRemaining -= writeSize;
             offset += writeSize;
             sequence = (sequence + 1) % 255;
