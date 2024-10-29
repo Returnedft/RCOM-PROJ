@@ -317,12 +317,12 @@ int llread(unsigned char *data){
         else C = RR0;
     }
     printf("Received data ");
-        printf("%d\n", i);
-        unsigned char *buff = (unsigned char*)malloc(5);
-        buff[0]=FLAG;
-        buff[1]=A2;
-        buff[2]=C;
-        buff[3]=A2^C;
+    printf("%d\n", i);
+    unsigned char *buff = (unsigned char*)malloc(5);
+    buff[0]=FLAG;
+    buff[1]=A2;
+    buff[2]=C;
+    buff[3]=A2^C;
     buff[4]=FLAG;
     writeBytesSerialPort(buff,sizeof(buff));
     sleep(1);
@@ -333,40 +333,35 @@ int llread(unsigned char *data){
 ////////////////////////////////////////////////
 // LLCLOSE
 ////////////////////////////////////////////////
-/* 
-int llclose(int showStatistics) {
-   if (connectionParameters.role == LlTx) {
-       llsendDisc(0);
-       alarmEnabled = 0;
-       alarmCount = 0;
-       while (alarmCount < 3) {
-           if (alarmEnabled == FALSE) {
-               alarm(4);
-               if (writeBytesSerialPort(buf, bufSize) == -1) return 1;
-               sleep(1);
-               alarmEnabled = TRUE;
-           }
-       }
-   }
+ 
+int llclose(LinkLayer linklayer, int showStatistics) {
+    if (linklayer.role == LlTx) {
+        alarmEnabled = 0;
+        alarmCount = 0;
+        llsendDisc(0);
+        const unsigned char buf[5] = {FLAG,A1,C2,A1^C2,FLAG};
+        if (writeBytesSerialPort(buf, sizeof(buf)) == -1) return 1;
+        printf("ua sended\n");
+        int clstat = closeSerialPort();
+        return clstat;
+    }
    else {
-       if (llsendDisc(1) == -1) {
-           return 0;
-       }
-       int STOP = FALSE;
-       unsigned char byte = 0;
-       int check = 0;
-       while (STOP == FALSE) {
-           int read = readByteSerialPort(&byte);
-           if ( read == -1 ) return 1;
-           else if (read == 0) continue;
-           else printf("Data = 0x%02X\n", byte);
-           uaState (byte, &check, 1);
-       }
+        llsendDisc(1);
+        int STOP = FALSE;
+        unsigned char byte = 0;
+        int check = 0;
+        while (STOP == FALSE) {
+            int read = readByteSerialPort(&byte);
+            if ( read == -1 ) return 1;
+            else if (read == 0) continue;
+            else printf("Data = 0x%02X\n", byte);
+            uaState (byte, &check, 1);
+        }
+        printf("UA read\n");
+        return 1;
    }
-   int clstat = closeSerialPort();
-   return clstat;
 }
-*/
+
 
 ////////////////////////////////////////////////
 // RECEIVEDATA
@@ -381,7 +376,6 @@ int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i){
     }
     switch(*check){
         case 0:
-            printf("1");
             if (byte==FLAG){
             *check=1;
             }
@@ -390,7 +384,6 @@ int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i){
             }
             break;
         case 1:
-            printf("2");
             if (byte==A1){
             *check=2;
             }
@@ -402,7 +395,6 @@ int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i){
             }
             break;
         case 2:
-            printf("3");
             if (byte==infoFrame){
             *check=3;
             }
@@ -414,7 +406,6 @@ int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i){
             }
             break;
         case 3:
-            printf("4");
             if (byte==(A1 ^ infoFrame)){
             *check=4;
             }
@@ -431,10 +422,8 @@ int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i){
                 unsigned char bcc2 = packet[*i-1];
                 (*i)--;
                 packet[*i] = '\0';
-                printf("bcc2 = 0x%02X\n", bcc2);
                 for (unsigned int j = 1; j < *i; j++)
                     bcc ^= packet[j];
-                printf("bcc = 0x%02X\n", bcc);
                 if (bcc==bcc2){
                     *check=6;
                 }else{
@@ -449,7 +438,6 @@ int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i){
             }
             break;
         case 5:
-            printf("6");
             if(byte==0x5D){ //esc
                 packet[(*i)++] = 0x7D;
                 *check=4;
@@ -549,6 +537,7 @@ int responseState(unsigned char byte, int*check){
 int discState(unsigned char byte, int*check, int sender){
     switch( *check){
         case 0:
+            printf("0");
             if (byte==FLAG){
             *check=1;
             }
@@ -557,10 +546,11 @@ int discState(unsigned char byte, int*check, int sender){
             }
             break;
         case 1:
-            if (byte==A2 || sender == 1){
+            printf("1");
+            if (byte==A2 || sender == 0){
             *check=2;
             }
-            else if (byte == A1 || sender == 0){
+            else if (byte == A1 || sender == 1){
             *check=2;
             }
             else if(byte==FLAG){
@@ -571,6 +561,7 @@ int discState(unsigned char byte, int*check, int sender){
             }
             break;
         case 2:
+        printf("2");
             if (byte==DISC){
             *check=3;
             }
@@ -582,6 +573,7 @@ int discState(unsigned char byte, int*check, int sender){
             }
             break;
         case 3:
+        printf("3");
             if (byte == (A2^DISC)){
             *check=4;
             }
@@ -593,6 +585,7 @@ int discState(unsigned char byte, int*check, int sender){
             }
             break;
         case 4:
+        printf("4");
             if (byte==FLAG){
             *check=5;
             }
@@ -604,37 +597,54 @@ int discState(unsigned char byte, int*check, int sender){
     return (*check == 5) ? 1 : 0;
 }
 
-int llsendDisc(int *sender){
+int llsendDisc(int sender){
     int check = 0;
+    unsigned char byte = 0;
     if (sender==0){
-        unsigned char byte = 0;
-        const unsigned char bufs [5] = {FLAG,A1,DISC, A1 ^ DISC, FLAG};
+        unsigned char *buff = (unsigned char*)malloc(5);
+        buff[0]=FLAG;
+        buff[1]=A1;
+        buff[2]=DISC;
+        buff[3]=A1^DISC;
+        buff[4]=FLAG;
+        sleep(1);
         while (alarmCount < 3){
             if (alarmEnabled == FALSE){
                 alarm(4);
-            if (writeBytesSerialPort(bufs, sizeof(bufs)) == -1) return 1;
+                if (writeBytesSerialPort(buff,5) == -1) return 1;
                 sleep(1);
                 alarmEnabled = TRUE;
             }
             int read = readByteSerialPort(&byte);
+            printf("%d\n",read);
             if ( read == -1 ) return 1;
             else if (read == 0) continue;
             if (discState(byte, &check, 0)) break;
         }
-
+        free(buff);
+        printf("disc Sended and read\n");
+        sleep(1);
     }
     else{
         int STOP = FALSE;
-        unsigned char byte = 0;
-        int check = 0;
         while (STOP == FALSE){
             int read = readByteSerialPort(&byte);
+            printf("%d\n",read);
             if ( read == -1 ) return 1;
             else if (read == 0) continue;
             if (discState(byte, &check, 1)) STOP = TRUE;
         }
-        const unsigned char buf[5] = {FLAG,A1,DISC,A1^DISC,FLAG};
-        writeBytesSerialPort(buf,sizeof(buf));
+        printf("oi");
+        unsigned char *buff = (unsigned char*)malloc(5);
+        buff[0]=FLAG;
+        buff[1]=A2;
+        buff[2]=DISC;
+        buff[3]=A2^DISC;
+        buff[4]=FLAG;
+        writeBytesSerialPort(buff,5);
+        free(buff);
+        printf("disc Sended and read\n");
+        sleep(1);
     }
 
    return 1;

@@ -71,12 +71,14 @@ int llread(unsigned char *data);
 // Close previously opened connection.
 // if showStatistics == TRUE, link layer should print statistics in the console on close.
 // Return "1" on success or "-1" on error.
-int llclose(int showStatistics);
+int llclose(LinkLayer linklayer, int showStatistics);
 
 int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i);
 
 int responseState(unsigned char byte, int *check);
 
 int discState(unsigned char byte, int *check, int sender);
+
+int llsendDisc(int sender);
 
 #endif // _LINK_LAYER_H_
