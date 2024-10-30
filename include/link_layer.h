@@ -81,4 +81,8 @@ int discState(unsigned char byte, int *check, int sender);
 
 int llsendDisc(int sender);
 
+int llsendDiscReceiver();
+
+int llsendDiscTransmitter();
+
 #endif // _LINK_LAYER_H_

@@ -27,8 +27,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     linklayer.timeout = timeout;
 
     llopen(linklayer);
-    llclose(linklayer, 1);
-    printf("oi");
     if (linklayer.role == LlTx) {
 
         FILE* file = fopen(filename, "rb");
@@ -116,7 +114,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         }
         fclose(newFile);
     }
-
+    llclose(linklayer, 0);
     return;
 }
 
