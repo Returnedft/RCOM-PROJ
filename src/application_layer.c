@@ -73,12 +73,10 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             
             memcpy(data, content + offset, writeSize);
             unsigned char* dataPacket = createDataPacket(sequence, writeSize, data);
-
             if (llwrite(dataPacket, writeSize + 4) == -1) {
-                free(dataPacket);
-                free(data);
-                free(content);
-                exit(-1);
+                free(dataPacket); // Free the data packet after sending
+                free(data);       // Free the temporary data buffer
+                continue;
             }
             free(dataPacket); // Free the data packet after sending
             free(data);       // Free the temporary data buffer
@@ -104,6 +102,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         FILE* newFile = fopen((char *) filename, "wb");
         while (1) {
             packetSize = llread(data);
+            if (packetSize == -1) continue;
             if(data[0] != 3){
                 unsigned char *buf = (unsigned char*)malloc(packetSize);
                 readDataPacket(buf, data, packetSize);

@@ -75,7 +75,7 @@ int llclose(LinkLayer linklayer, int showStatistics);
 
 int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i);
 
-int responseState(unsigned char byte, int *check);
+int responseState(unsigned char byte, int *check, int *C);
 
 int discState(unsigned char byte, int *check, int sender);
 

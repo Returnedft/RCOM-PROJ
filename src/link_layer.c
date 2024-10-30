@@ -264,6 +264,7 @@ int llwrite(const unsigned char *buf, int bufSize){
     unsigned char byte = 0;
     int check = 0;
     int responseCheck;
+    int C = 0;
 
     unsigned char* content = (unsigned char*) malloc(bufSize*2 + 6); // worst case scenario all data is flags or esc
     content[0] = FLAG;
@@ -288,11 +289,16 @@ int llwrite(const unsigned char *buf, int bufSize){
         int read = readByteSerialPort(&byte);
         if ( read == -1 ) return -1;
         else if (read == 0) continue;
-        responseCheck = responseState(byte, &check);
-        if (responseCheck == 1) break;
-        else if (responseCheck == -1) {
-            printf("Received REJ%d, proceding...\n",ns);
-            alarmEnabled = FALSE;
+        responseCheck = responseState(byte, &check, &C);
+        if (responseCheck == 1) {
+            if (C == REJ1 || C == REJ0) {
+                printf("Received REJ%d, proceding...\n",ns);
+                return -1;
+            }
+            else if (C == RR0 || C == RR1){
+                printf("Received RR%d, proceding...\n",ns);
+                break;
+            }
         }
     }
 
@@ -301,7 +307,6 @@ int llwrite(const unsigned char *buf, int bufSize){
         exit(0);
     }
 
-    printf("Received RR%d, proceding...\n",ns);
 
     sleep(1);
 
@@ -326,8 +331,8 @@ int llread(unsigned char *data){
     }
     unsigned char C;
     if (dataCheck == -1){
-        if (ns == 1) C = REJ1;
-        else C = REJ0;
+        if (ns == 1) C = REJ0;
+        else C = REJ1;
     }else{
         if (ns == 1) C = RR1;
         else C = RR0;
@@ -349,6 +354,7 @@ int llread(unsigned char *data){
 
     if (dataCheck == -1){
         printf("Sending REJ%d...\n",ns);
+        return -1;
     }
     else printf("Sending RR%d...\n",ns);
 
@@ -447,12 +453,13 @@ int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i){
                 unsigned char bcc2 = packet[*i-1];
                 (*i)--;
                 packet[*i] = '\0';
-                for (unsigned int j = 1; j < *i; j++)
-                    bcc ^= packet[j];
+                for (unsigned int j = 1; j < *i; j++){bcc ^= packet[j];}
+                printf("%d\n", bcc);
+                printf("%d\n", bcc2);
                 if (bcc==bcc2){
                     *check=6;
                 }else{
-                    *check=0;
+                    return -1;
                 }
             }
             else if(byte==0x7D){
@@ -482,7 +489,7 @@ int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i){
 ////////////////////////////////////////////////
 // RESPONSESTATE
 ////////////////////////////////////////////////
-int responseState(unsigned char byte, int*check){
+int responseState(unsigned char byte, int*check, int *C){
     switch(*check){
         case 0:
             if (byte==FLAG){
@@ -506,18 +513,22 @@ int responseState(unsigned char byte, int*check){
         case 2:
             if (byte==RR0){
                 *check=3;
+                *C = RR0;
                 ns = 0;
             }
             else if (byte == RR1){
                 *check = 3;
+                *C = RR1;
                 ns = 1;
             }
             else if (byte==REJ0){
                 *check=3;
+                *C = REJ0;
                 ns = 1;
             }
             else if (byte == REJ1){
                 *check = 3;
+                *C = REJ1;
                 ns = 0;
 
             }
@@ -529,10 +540,7 @@ int responseState(unsigned char byte, int*check){
             }
             break;
         case 3:
-            if ((byte == (A2^RR0)) | (byte == (A2 ^ RR1))){
-                *check=4;
-            }
-            else if ((byte == (A2^REJ0)) | (byte == (A2^REJ1))){
+            if (byte == (A2^ (*C))){
                 *check=4;
             }
             else if(byte==FLAG){
