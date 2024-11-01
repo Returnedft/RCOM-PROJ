@@ -336,6 +336,7 @@ int llread(unsigned char *data){
     }
     unsigned char C;
     if (dataCheck == -1){
+        numberOfRetransmissions++;
         if (ns == 1) C = REJ0;
         else C = REJ1;
     }else{
