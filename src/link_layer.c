@@ -9,12 +9,17 @@
 #include "alarm.h"
 #include <signal.h>
 #include <stdio.h>
+#include <time.h>
 #include <unistd.h>
 
 // MISC
 #define _POSIX_SOURCE 1 // POSIX compliant source
 
 LinkLayer linkLayer;
+int numberOfFrames = 0;
+int numberOfRetransmissions = 0;
+int numberOfTimeouts = 0;
+long int timer = 0;
 int ns = 0;
 
 
@@ -60,11 +65,11 @@ int llsendSet(const unsigned char *buf, int bufSize){
     while (alarmCount < linkLayer.nRetransmissions){
 
         if (alarmEnabled == FALSE){
-        
+            numberOfTimeouts++;
             alarm(4);
             if (writeBytesSerialPort(buf, bufSize) == -1) return 1;
             printf("Sending SET..\n");
-            sleep(1);
+            
             alarmEnabled = TRUE;
         }
 
@@ -81,7 +86,7 @@ int llsendSet(const unsigned char *buf, int bufSize){
     }
 
     if (check == 5) printf("Ua received \n");
-    sleep(1);
+    
 
     return 0;
 }
@@ -107,7 +112,7 @@ int llsendUA(){
     }
     const unsigned char buf[5] = {FLAG,A2,C2,A2^C2,FLAG};
     writeBytesSerialPort(buf,sizeof(buf));
-    sleep(1);
+    
     printf("Sended UA \n");
     return 0;
 }
@@ -283,7 +288,7 @@ int llwrite(const unsigned char *buf, int bufSize){
             alarm(4);
             if (writeBytesSerialPort(content, contentSize+6) == -1) return -1;
             printf("Sending data packet I%d... \n\n",ns);
-            sleep(1);
+            numberOfTimeouts++;
             alarmEnabled = TRUE;
         }
         int read = readByteSerialPort(&byte);
@@ -308,7 +313,7 @@ int llwrite(const unsigned char *buf, int bufSize){
     }
 
 
-    sleep(1);
+    
 
     return contentSize;
 }
@@ -349,7 +354,7 @@ int llread(unsigned char *data){
     buff[4]=FLAG;
 
     writeBytesSerialPort(buff,sizeof(buff));
-    sleep(1);
+    
     free(buff);
 
     if (dataCheck == -1){
@@ -370,10 +375,10 @@ int llclose(LinkLayer linklayer, int showStatistics) {
         if (llsendDiscTransmitter() == -1) exit(-1);
         const unsigned char buf[5] = {FLAG,A1,C2,A1^C2,FLAG};
         if (writeBytesSerialPort(buf, sizeof(buf)) == -1) return 1;
-        sleep(1);
+        
         printf("UA sended\n");
     }
-   else {
+    else {
         if (llsendDiscReceiver() == -1) exit(-1);
         /*
         unsigned char byte = 0;
@@ -388,9 +393,15 @@ int llclose(LinkLayer linklayer, int showStatistics) {
         }
         printf("UA read\n");
         */
-   }
-   int clstat = closeSerialPort();
-   return clstat;
+    }
+    int clstat = closeSerialPort();
+    if (showStatistics){
+        printf("Number of frames %d\n", numberOfFrames);
+        printf("Number of retransmissions %d\n", numberOfRetransmissions);
+        printf("Number of timeouts %d\n", numberOfTimeouts);
+        printf("Time spent %f seconds\n", ((float)(clock()-timer))/CLOCKS_PER_SEC);
+    }
+    return clstat;
 }
 
 
@@ -454,8 +465,6 @@ int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i){
                 (*i)--;
                 packet[*i] = '\0';
                 for (unsigned int j = 1; j < *i; j++){bcc ^= packet[j];}
-                printf("%d\n", bcc);
-                printf("%d\n", bcc2);
                 if (bcc==bcc2){
                     *check=6;
                 }else{
@@ -644,7 +653,7 @@ int llsendDiscTransmitter(){
         if (alarmEnabled == FALSE){
             alarm(4);
             if (writeBytesSerialPort(buf,5) == -1) return -1;
-            sleep(1);
+            numberOfTimeouts++;
             alarmEnabled = TRUE; 
         }
         read = readByteSerialPort(&byte);
@@ -679,7 +688,7 @@ int llsendDiscReceiver(){
     }
     const unsigned char buf[5] = {FLAG,A2,DISC,A2^DISC,FLAG};
     writeBytesSerialPort(buf,sizeof(buf));
-    sleep(1);
+    
     printf("Sended Disc \n");
     return 0;
 }

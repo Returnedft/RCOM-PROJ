@@ -3,9 +3,11 @@
 #include <string.h>  // for strncpy
 #include <math.h>
 #include <stdio.h>
+#include <time.h>
 #include <stdlib.h>  // For exit()
 
 void applicationLayer(const char *serialPort, const char *role, int baudRate, int nTries, int timeout, const char *filename) {
+    timer = clock();
     LinkLayer linklayer;
 
     // Copy serialPort string into the struct safely
@@ -113,7 +115,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         }
         fclose(newFile);
     }
-    llclose(linklayer, 0);
+    llclose(linklayer, 1);
     return;
 }
 

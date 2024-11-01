@@ -19,6 +19,10 @@ typedef struct
     int timeout;
 } LinkLayer;
 
+extern int numberOfFrames;
+extern int numberOfRetransmissions;
+extern int numberOfTimeouts;
+extern long int timer;
 extern int ns;
 
 // SIZE of maximum acceptable payload.
