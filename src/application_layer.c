@@ -3,11 +3,9 @@
 #include <string.h>  // for strncpy
 #include <math.h>
 #include <stdio.h>
-#include <time.h>
 #include <stdlib.h>  // For exit()
 
 void applicationLayer(const char *serialPort, const char *role, int baudRate, int nTries, int timeout, const char *filename) {
-    timer = clock();
     LinkLayer linklayer;
 
     // Copy serialPort string into the struct safely
@@ -38,13 +36,20 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         fseek(file, 0L, SEEK_END);
         long int fileSize = ftell(file);
         fseek(file, 0L, SEEK_SET); // get back to the beginning of the file
-
+    
+        unsigned char* startControlPacket;
         int controlPacketSize;
-        unsigned char* startControlPacket = createControlPacket(1, filename, fileSize, &controlPacketSize);
-        if (llwrite(startControlPacket, controlPacketSize) == -1) {
-            free(startControlPacket);
-            fclose(file);
-            exit(-1);
+        while(TRUE){
+
+            startControlPacket = createControlPacket(1, filename, fileSize, &controlPacketSize);
+
+            printf("Sending Start Control Packet... \n");
+            if (llwrite(startControlPacket, controlPacketSize) == -1) {
+                free(startControlPacket);
+                continue;
+            }
+
+            break;
         }
         free(startControlPacket); // Free the control packet after use
 
@@ -88,12 +93,22 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         }
 
         free(content); // Free the main file content buffer
+
+        unsigned char *controlPacketEnd;
         
-        unsigned char *controlPacketEnd = createControlPacket(3, filename, fileSize, &controlPacketSize);
-        if(llwrite(controlPacketEnd, controlPacketSize) == -1) { 
-            printf("Exit: error in end packet\n");
-            exit(-1);
+        while(TRUE){
+
+            controlPacketEnd = createControlPacket(3, filename, fileSize, &controlPacketSize);
+
+            printf("Sending End Control Packet... \n");
+            if(llwrite(controlPacketEnd, controlPacketSize) == -1) { 
+                free(controlPacketEnd);
+                continue;
+            }
+            
+            break;
         }
+
     } else {
         unsigned char *data = (unsigned char *)malloc(6 + 2*MAX_PAYLOAD_SIZE);
         int packetSize = llread(data);
@@ -115,7 +130,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         }
         fclose(newFile);
     }
-    llclose(linklayer, 1);
+    llclose(linklayer, 0);
     return;
 }
 

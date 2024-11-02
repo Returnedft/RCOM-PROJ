@@ -66,7 +66,7 @@ int llsendSet(const unsigned char *buf, int bufSize){
 
         if (alarmEnabled == FALSE){
             numberOfTimeouts++;
-            alarm(4);
+            alarm(linkLayer.timeout);
             if (writeBytesSerialPort(buf, bufSize) == bufSize)numberOfFrames++;
             else exit(1);
             printf("Sending SET..\n");
@@ -287,7 +287,7 @@ int llwrite(const unsigned char *buf, int bufSize){
     content[5+contentSize] = FLAG;
     while (alarmCount < linkLayer.nRetransmissions){
         if (alarmEnabled == FALSE){
-            alarm(4);
+            alarm(linkLayer.timeout);
             if (writeBytesSerialPort(content, contentSize+6) == contentSize+6) numberOfFrames++;
             else exit(1);
             printf("Sending data packet I%d... \n\n",ns);
@@ -404,7 +404,7 @@ int llclose(LinkLayer linklayer, int showStatistics) {
     }
     int clstat = closeSerialPort();
     if (showStatistics){
-        print("\n");
+        printf("\n");
         printf("Number of frames %d\n", numberOfFrames);
         printf("Number of retransmissions %d\n", numberOfRetransmissions);
         printf("Number of timeouts %d\n", numberOfTimeouts);
@@ -660,7 +660,7 @@ int llsendDiscTransmitter(){
     buf[4]=FLAG;
     while (alarmCount < linkLayer.nRetransmissions){
         if (alarmEnabled == FALSE){
-            alarm(4);
+            alarm(linkLayer.timeout);
             if (writeBytesSerialPort(buf,5) == 5)numberOfFrames++;
             else exit(1);
             numberOfTimeouts++;
