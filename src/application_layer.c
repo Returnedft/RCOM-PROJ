@@ -130,7 +130,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         }
         fclose(newFile);
     }
-    llclose(linklayer, 0);
+    llclose(linklayer, 1);
     return;
 }
 

@@ -99,7 +99,7 @@ int llsendUA(){
     int STOP = FALSE;
     unsigned char byte = 0;
     int check = 0;
-
+    numberOfTimeouts++;
     while (STOP == FALSE){
 
         int read = readByteSerialPort(&byte);
@@ -405,7 +405,8 @@ int llclose(LinkLayer linklayer, int showStatistics) {
     int clstat = closeSerialPort();
     if (showStatistics){
         printf("\n");
-        printf("Number of frames %d\n", numberOfFrames);
+        if (linklayer.role == LlTx)printf("Number of frames sent by the transmiter %d\n", numberOfFrames);
+        else printf("Number of frames sent by the receiver %d\n", numberOfFrames);
         printf("Number of retransmissions %d\n", numberOfRetransmissions);
         printf("Number of timeouts %d\n", numberOfTimeouts);
         printf("Time spent %f seconds\n", ((float)(clock()-timer))/CLOCKS_PER_SEC);
@@ -686,6 +687,7 @@ int llsendDiscReceiver(){
     int check = 0;
     int STOP = FALSE;
     unsigned char byte = 0;
+    numberOfTimeouts++;
     while (STOP == FALSE){
 
         int read = readByteSerialPort(&byte);
