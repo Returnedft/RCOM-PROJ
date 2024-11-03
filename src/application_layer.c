@@ -145,7 +145,6 @@ unsigned char* createControlPacket(const unsigned int C, const char* name, long 
     int nameSize= strlen(name);
     *packetSize = fileSize+nameSize+5;
     
-    printf("%d",*packetSize);
     unsigned char* controlPacket = (unsigned char*) malloc(*packetSize); // Dynamically allocate memory
 
     controlPacket[0] = C;

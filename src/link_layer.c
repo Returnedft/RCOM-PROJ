@@ -86,7 +86,7 @@ int llsendSet(const unsigned char *buf, int bufSize){
         exit(0);
     }
 
-    if (check == 5) printf("Ua received \n");
+    if (check == 5) printf("Ua received \n\n");
     
 
     return 0;
@@ -114,7 +114,7 @@ int llsendUA(){
     if (writeBytesSerialPort(buf,sizeof(buf))== sizeof(buf)) numberOfFrames++;
     else exit(1);
     
-    printf("Sended UA \n");
+    printf("Sended UA \n\n");
     return 0;
 }
 
@@ -135,7 +135,7 @@ int uaState(unsigned char byte, int *check, int sender){
             if (byte==A1 && sender == 1){
                 *check=2;
             }
-            if (byte==A2 && sender == 0){
+            else if (byte==A2 && sender == 0){
                 *check=2;
             }
             else if(byte==FLAG){
@@ -363,12 +363,26 @@ int llread(unsigned char *data){
     free(buff);
 
     if (dataCheck == -1){
-        printf("Sending REJ%d...\n",ns);
+        printf("Sending REJ%d...\n\n",ns);
         return -1;
     }
-    else printf("Sending RR%d...\n",ns);
+    else printf("Sending RR%d...\n\n",ns);
 
     return i;
+}
+
+int receiveUA(){
+    unsigned char byte = 0;
+    int STOP = FALSE;
+    int check = 0;
+    while (STOP == FALSE) {
+        int read = readByteSerialPort(&byte);
+        if ( read == -1 ) return -1;
+        else if ( read == 0 ) continue;
+        if (uaState(byte, &check, 1)) STOP = TRUE;
+    }
+    printf("UA received\n");
+    return 1;
 }
 
 ////////////////////////////////////////////////
@@ -381,24 +395,11 @@ int llclose(LinkLayer linklayer, int showStatistics) {
         const unsigned char buf[5] = {FLAG,A1,C2,A1^C2,FLAG};
         if (writeBytesSerialPort(buf, sizeof(buf)) == sizeof(buf))numberOfFrames++;
         else exit(1);
-        
         printf("UA sended\n");
     }
     else {
         if (llsendDiscReceiver() == -1) exit(-1);
-        /*
-        unsigned char byte = 0;
-        int STOP = FALSE;
-        int check = 0;
-        while (STOP == FALSE) {
-            int read = readByteSerialPort(&byte);
-            printf("byte :%d\n",byte);
-            if (uaState(byte, &check, 1)) STOP = TRUE;
-            else if ( read == -1 ) return 1;
-            else continue;
-        }
-        printf("UA read\n");
-        */
+        if (receiveUA() == -1) exit(-1);
     }
     int clstat = closeSerialPort();
     if (showStatistics){
@@ -679,7 +680,7 @@ int llsendDiscTransmitter(){
         printf("Max number of retransmissions reached...\n");
         exit(0);
     }
-    printf("disc Sended and read\n");
+    printf("\ndisc Sended and read\n");
     return 1;
 }
 
