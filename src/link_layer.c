@@ -672,7 +672,7 @@ int llsendDiscTransmitter(){
         if (read == 1) {
             if (discState(byte, &check, 0)) break;
         }
-        else if ( read == -1 ) return 1;
+        else if ( read == -1 ) return -1;
         else continue;
     }
     free(buf);
@@ -694,7 +694,7 @@ int llsendDiscReceiver(){
         if (read == 1) {
             if (discState(byte, &check,1)) STOP = TRUE;
         }
-        if ( read == -1 ) return 1;
+        if ( read == -1 ) return -1;
         else continue;
 
     }
@@ -703,5 +703,5 @@ int llsendDiscReceiver(){
     else exit(1);
     
     printf("Sended Disc \n");
-    return 0;
+    return 1;
 }

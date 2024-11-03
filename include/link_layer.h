@@ -77,16 +77,28 @@ int llread(unsigned char *data);
 // Return "1" on success or "-1" on error.
 int llclose(LinkLayer linklayer, int showStatistics);
 
+//State Machine for Information frames
+//Return "1" when all Information frame is correct, "0" if it is processing or "-1" if there is a problem with the BCC2
 int receiveData(unsigned char byte, int*check, unsigned char* packet, int *i);
 
+//State Machine for information frames
+//Return "1" when all information frame is correct, "0" if it is processing or "-1" if there is a problem with the BCC2
 int responseState(unsigned char byte, int *check, int *C);
 
+//State Machine for Disc command
+//Return "1" when all Disc command correct or "0" if not
 int discState(unsigned char byte, int *check, int sender);
 
-int llsendDisc(int sender);
-
+// Send the receiver DISC(Set-up) in buf with size bufSize.
+// Return "1" on sucess or "-1" on error.
 int llsendDiscReceiver();
 
+// Send the transmitter DISC(Set-up) in buf with size bufSize.
+// Return "1" on sucess or "-1" on error.
 int llsendDiscTransmitter();
+
+// Receive the UA command.
+// Return "1" on sucess or "-1" on error.
+int receiveUA();
 
 #endif // _LINK_LAYER_H_
